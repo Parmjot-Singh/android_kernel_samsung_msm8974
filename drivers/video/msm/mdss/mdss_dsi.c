@@ -1617,11 +1617,13 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 {
 	struct device_node *dsi_pan_node = NULL;
 
-	pr_debug("%s:%d: Select primary panel from dt\n",
+	pr_info("%s:%d: Select primary panel from dt\n",
 					__func__, __LINE__);
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	pr_info(" CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL is defined, check get_lcd_ldi_info()\n");
 	if ( !get_lcd_ldi_info()){/* MAGNA_PANEL */
+		pr_info(" MAGNA PANEL? using qcom,dsi-pref-prim-pan-magna\n");
 		dsi_pan_node = of_parse_phandle(pdev->dev.of_node,
 						"qcom,dsi-pref-prim-pan-magna", 0);
 	} else /* SLSI_PANEL */
@@ -1629,11 +1631,13 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 		&& !defined(CONFIG_FB_MSM_MDSS_MAGNA_LDI_EA8061))\
 		|| defined(CONFIG_FB_MSM_MDSS_SAMSUNG_OCTA_VIDEO_720P_PT_PANEL)
 	if (get_oled_id() == 0x0){  /*magna*/
+		pr_info(" get_oled_id() == 0x0, magna? using qcom,dsi-pref-prim-pan2\n");
 		dsi_pan_node = of_parse_phandle(pdev->dev.of_node,
 						"qcom,dsi-pref-prim-pan2", 0);
 	} else
 #endif
 	{
+		pr_info(" Normal flow! using qcom,dsi-pref-prim-pan\n");
 		dsi_pan_node = of_parse_phandle(pdev->dev.of_node,
 						"qcom,dsi-pref-prim-pan", 0);
 	}
@@ -1776,6 +1780,7 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
 		goto error_pan_node;
 	}
+	pr_info("%s: successfully found panel OF node! panel_cfg = %s\n", __func__, panel_cfg);
 
 	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
 
