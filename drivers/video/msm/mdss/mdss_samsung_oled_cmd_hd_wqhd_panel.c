@@ -731,19 +731,19 @@ static struct dsi_cmd get_aid_aor_control_set(int cd_idx)
 	if (!aid_map_table.size || !(cd_idx < aid_map_table.size))
 		goto end;
 
-		/* Get index in the aid command list*/
-		cmd_idx = aid_map_table.cmd_idx[cd_idx];
-		c_payload = aid_cmds_list.cmd_desc[cmd_idx].payload;
+	/* Get index in the aid command list*/
+	cmd_idx = aid_map_table.cmd_idx[cd_idx];
+	c_payload = aid_cmds_list.cmd_desc[cmd_idx].payload;
 
 
-		/* Check if current & previous commands are same */
-		if (p_idx >= 0) {
-			p_payload = aid_cmds_list.cmd_desc[p_idx].payload;
-			payload_size = aid_cmds_list.cmd_desc[p_idx].dchdr.dlen;
+	/* Check if current & previous commands are same */
+	if (p_idx >= 0) {
+		p_payload = aid_cmds_list.cmd_desc[p_idx].payload;
+		payload_size = aid_cmds_list.cmd_desc[p_idx].dchdr.dlen;
 
-			if (!memcmp(p_payload, c_payload, payload_size))
-				goto end;
-		}
+		if (!memcmp(p_payload, c_payload, payload_size))
+			goto end;
+	}
 
 	/* Get the command desc */
 	aid_control.cmd_desc = &(aid_cmds_list.cmd_desc[cmd_idx]);
@@ -1233,12 +1233,12 @@ static int make_brightcontrol_set(int bl_level)
 	struct dsi_cmd acl_off_cont = {0,};
 	struct dsi_cmd elvss_control = {0,};
 
-#if defined(HBM_RE)
+#if defined(HBM_RE) // defined
 	struct dsi_cmd hbm_off_control = {0,};
 #endif
 	struct dsi_cmd gamma_control = {0,};
 	struct dsi_cmd testKey = {0,};
-#if defined(TEMPERATURE_ELVSS)
+#if defined(TEMPERATURE_ELVSS) // defined
 	struct dsi_cmd temperature_elvss_control = {0,};
 	struct dsi_cmd temperature_elvss_control2 = {0,};
 #endif
@@ -1247,12 +1247,15 @@ static int make_brightcontrol_set(int bl_level)
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
+	/* I just want to know for sure what a bl_level actually is */
+	printk("%s: bl_level = %d, cd_idx = %d, cd_level = %d\n", __func__, bl_level, cd_idx, cd_level);
+
 	testKey = get_testKey_set(1);
-	cmd_count = update_bright_packet(cmd_count, &testKey);
+	cmd_count = update_bright_packet(cmd_count, &testKey);   // Step 1. write "Test key enable" into packet
 
 	aid_control = get_aid_aor_control_set(cd_idx);
 
-	cmd_count = update_bright_packet(cmd_count, &aid_control);
+	cmd_count = update_bright_packet(cmd_count, &aid_control); // Step 2. write aid control seq into packet
 
 #if defined(HBM_RE)
 	if ((msd.panel == PANEL_HD_OCTA_EA8064G_CMD)||(msd.panel == PANEL_FHD_OCTA_EA8064G_CMD)) {
@@ -1274,10 +1277,12 @@ static int make_brightcontrol_set(int bl_level)
 		acl_off_cont = get_acl_control_off_set(); /*b5 41,55 00 */
 		cmd_count = update_bright_packet(cmd_count, &acl_off_cont);
 	}
+	// no bytes are emitted for acl - it is already off
+	// get_acl_control_off_set() return zero-byte seq and update_bright_packet() is no-op
 
 	/*elvss*/
 	elvss_control = get_elvss_control_set(cd_idx);
-	cmd_count = update_bright_packet(cmd_count, &elvss_control);
+	cmd_count = update_bright_packet(cmd_count, &elvss_control); // Step 3. write elvss control
 
 #if defined(TEMPERATURE_ELVSS)
 	/* ELVSS TEMPERATURE COMPENSATION*/
@@ -1297,10 +1302,10 @@ static int make_brightcontrol_set(int bl_level)
 
 	/*gamma*/
 	gamma_control = get_gamma_control_set(cd_level);
-	cmd_count = update_bright_packet(cmd_count, &gamma_control);
+	cmd_count = update_bright_packet(cmd_count, &gamma_control); // Step 4. write gamma
 
 	testKey = get_testKey_set(0);
-	cmd_count = update_bright_packet(cmd_count, &testKey);
+	cmd_count = update_bright_packet(cmd_count, &testKey); // Step 5. Finalize packet - write "Test key disable"
 
 #if defined(TEMPERATURE_ELVSS)
 	LCD_DEBUG("bright_level: %d, candela_idx: %d( %d cd ), "\
