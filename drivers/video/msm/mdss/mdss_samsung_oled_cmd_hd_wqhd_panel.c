@@ -1684,9 +1684,9 @@ static int mipi_samsung_disp_send_cmd(
 	struct dsi_cmd_desc *cmd_desc;
 	int cmd_size = 0;
 	int flag = 0;
-#ifdef CMD_DEBUG
+//#ifdef CMD_DEBUG
 	int i,j;
-#endif
+//#endif
 
 	if (!get_lcd_id()) {
 		printk("%s: get_my_check(0)!\n",__func__);
@@ -1912,13 +1912,17 @@ static int mipi_samsung_disp_send_cmd(
 		goto err;
 	}
 
-#ifdef CMD_DEBUG
-	for (i = 0; i < cmd_size; i++) {
-		for (j = 0; j < cmd_desc[i].dchdr.dlen; j++)
-			printk("%x ",cmd_desc[i].payload[j]);
-		printk("\n");
+//#ifdef CMD_DEBUG
+	/* Dump packets only for specific command, not all of them */
+	if (cmd == PANEL_BRIGHT_CTRL) {
+		printk("brightness_packet: ");
+		for (i = 0; i < cmd_size; i++) {
+			for (j = 0; j < cmd_desc[i].dchdr.dlen; j++)
+				printk("%x ",cmd_desc[i].payload[j]);
+			printk("\n");
+		}
 	}
-#endif
+//#endif
 
 #ifdef MDP_RECOVERY
 	if (!mdss_recovery_start)
