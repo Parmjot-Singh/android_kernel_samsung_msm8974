@@ -1691,6 +1691,7 @@ static int mipi_samsung_disp_send_cmd(
 	int flag = 0;
 //#ifdef CMD_DEBUG
 	int i,j;
+	bool show_packet_dump = false;
 //#endif
 
 	if (!get_lcd_id()) {
@@ -1919,8 +1920,28 @@ static int mipi_samsung_disp_send_cmd(
 
 //#ifdef CMD_DEBUG
 	/* Dump packets only for specific command, not all of them */
-	if (cmd == PANEL_BRIGHT_CTRL) {
-		printk("brightness_packet: ");
+	show_packet_dump = true;
+	switch (cmd) {
+	case PANEL_BRIGHT_CTRL:
+		printk("brightness_packet:\n");
+		break;
+	case PANEL_DISPLAY_ON_SEQ:
+		printk("panel-display-on-seq:\n");
+		break;
+	case PANEL_DISPLAY_OFF_SEQ:
+		printk("panel-display-off-seq:\n");
+		break;
+	case PANEL_DISPLAY_ON:
+		printk("panel-display-on-cmds:\n");
+		break;
+	case PANEL_DISPLAY_OFF:
+		printk("panel-display-off-cmds:\n");
+		break;
+	default:
+		show_packet_dump = false;
+		break;
+	}
+	if (show_packet_dump) {
 		for (i = 0; i < cmd_size; i++) {
 			for (j = 0; j < cmd_desc[i].dchdr.dlen; j++)
 				printk("%x ",cmd_desc[i].payload[j]);
