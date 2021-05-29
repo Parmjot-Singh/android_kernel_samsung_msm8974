@@ -938,10 +938,10 @@ static struct dsi_cmd get_elvss_control_set(int cd_idx)
 			else
 				smart_acl_elvss_cmds_list.cmd_desc[cmd_idx].payload[1] = 0x8C;
 		}
-			payload = smart_acl_elvss_cmds_list.cmd_desc[cmd_idx].payload;
-			elvss_control.cmd_desc = &(smart_acl_elvss_cmds_list.cmd_desc[cmd_idx]);
+		payload = smart_acl_elvss_cmds_list.cmd_desc[cmd_idx].payload;
+		elvss_control.cmd_desc = &(smart_acl_elvss_cmds_list.cmd_desc[cmd_idx]);
 
-		pr_debug("ELVSS for SMART_ACL cd_idx=%d, cmd_idx=%d\n", cd_idx, cmd_idx);
+		pr_info("ELVSS for SMART_ACL cd_idx=%d, cmd_idx=%d, payload[1] = %02x\n", cd_idx, cmd_idx, payload[1]);
 	} else {
 		if(msd.panel == PANEL_FHD_OCTA_EA8064G_CMD){
 			if (msd.dstat.temperature > 0)
@@ -956,10 +956,10 @@ static struct dsi_cmd get_elvss_control_set(int cd_idx)
 			else
 				elvss_cmds_list.cmd_desc[cmd_idx].payload[1] = 0x9C;
 		}
-			payload = elvss_cmds_list.cmd_desc[cmd_idx].payload;
-			elvss_control.cmd_desc = &(elvss_cmds_list.cmd_desc[cmd_idx]);
+		payload = elvss_cmds_list.cmd_desc[cmd_idx].payload;
+		elvss_control.cmd_desc = &(elvss_cmds_list.cmd_desc[cmd_idx]);
 
-		pr_debug("ELVSS for normal cd_idx=%d, cmd_idx=%d\n", cd_idx, cmd_idx);
+		pr_info("ELVSS for normal cd_idx=%d, cmd_idx=%d, payload[1] = %02x\n", cd_idx, cmd_idx, payload[1]);
 	}
 
 	elvss_control.num_of_cmds = 1;
@@ -3454,11 +3454,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 #endif
 #if defined(SMART_ACL)
 	if ((msd.panel == PANEL_FHD_OCTA_S6E3FA2_CMD)&& (msd.id3 <= EVT1_K_fhd_REVH)){
+		printk("mdss_panel_parse_dt: using samsung,panel-smart-acl-elvss-cmds-revG-list\n");
 		mdss_samsung_parse_panel_cmd(np, &smart_acl_elvss_cmds_list,
 					"samsung,panel-smart-acl-elvss-cmds-revG-list");
 		mdss_samsung_parse_panel_table(np, &smart_acl_elvss_map_table,
 					"samsung,panel-smart-acl-elvss-map-revG-table");
    }else {
+		printk("mdss_panel_parse_dt: using samsung,panel-smart-acl-elvss-cmds-list (not revG)\n");
 		mdss_samsung_parse_panel_cmd(np, &smart_acl_elvss_cmds_list,
 					"samsung,panel-smart-acl-elvss-cmds-list");
 		mdss_samsung_parse_panel_table(np, &smart_acl_elvss_map_table,
