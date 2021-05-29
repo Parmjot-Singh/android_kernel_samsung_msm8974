@@ -45,7 +45,7 @@ static struct SMART_DIM smart_S6E3_hmt_single;
 static struct smartdim_conf_hmt __S6E3_HMT_S__;
 #endif
 
-#define SMART_DIMMING_DEBUG
+/*#define SMART_DIMMING_DEBUG*/
 
 static char max_lux_table[GAMMA_SET_MAX];
 static char min_lux_table[GAMMA_SET_MAX];
@@ -4317,7 +4317,6 @@ struct smartdim_conf *smart_S6E3_get_conf(void) {
 	__S6E3__.get_min_lux_table = get_min_lux_table;
 	__S6E3__.mtp_buffer = (char *)(&smart_S6E3.MTP_ORIGN);
 	__S6E3__.print_aid_log = print_aid_log;
-	pr_info("smart_S6E3_get_conf: called");
 	return (struct smartdim_conf *)&__S6E3__;
 }
 
