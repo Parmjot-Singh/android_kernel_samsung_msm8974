@@ -1358,8 +1358,10 @@ static int dwc3_msm_config_gdsc(struct dwc3_msm *mdwc, int on)
 	if (!mdwc->dwc3_gdsc) {
 		mdwc->dwc3_gdsc = devm_regulator_get(mdwc->dev,
 			"USB3_GDSC");
-		if (IS_ERR(mdwc->dwc3_gdsc))
+		if (IS_ERR(mdwc->dwc3_gdsc)) {
+			printk(KERN_DEBUG "dwc3_msm_config_gdsc: there is no USB3_GDSC\n");
 			return 0;
+		}
 	}
 
 	if (on) {
@@ -1406,6 +1408,8 @@ static int dwc3_msm_link_clk_reset(struct dwc3_msm *mdwc, bool assert)
 static void dwc3_msm_ss_phy_reg_init(struct dwc3_msm *mdwc)
 {
 	u32 data = 0;
+
+	printk(KERN_INFO "dwc3_msm_ss_phy_reg_init: start\n");
 
 	/*
 	 * WORKAROUND: There is SSPHY suspend bug due to which USB enumerates
@@ -1467,13 +1471,19 @@ static void dwc3_msm_ss_phy_reg_init(struct dwc3_msm *mdwc)
 	 */
 	dwc3_msm_write_readback(mdwc->base, SS_PHY_PARAM_CTRL_1,
 				0x07f03f07, 0x07f01605);
+
+	printk(KERN_INFO "dwc3_msm_ss_phy_reg_init: done\n");
 }
 
 /* Initialize QSCRATCH registers for HSPHY and SSPHY operation */
 static void dwc3_msm_qscratch_reg_init(struct dwc3_msm *mdwc,
 						unsigned event_status)
 {
+	printk(KERN_INFO "dwc3_msm_qscratch_reg_init: start\n");
+
 	if (event_status == DWC3_CONTROLLER_POST_RESET_EVENT) {
+		printk(KERN_INFO "dwc3_msm_qscratch_reg_init: DWC3_CONTROLLER_POST_RESET_EVENT, "
+				"doing dwc3_msm_ss_phy_reg_init only\n");
 		dwc3_msm_ss_phy_reg_init(mdwc);
 		return;
 	}
@@ -1503,12 +1513,17 @@ static void dwc3_msm_qscratch_reg_init(struct dwc3_msm *mdwc,
 	 * VBUS valid threshold, disconnect valid threshold, DC voltage level,
 	 * preempasis and rise/fall time.
 	 */
-	if (override_phy_init)
+	if (override_phy_init) {
+		printk(KERN_WARNING "dwc3_msm_qscratch_reg_init: overriding hsphy_init_seq!\n");
 		mdwc->hsphy_init_seq = override_phy_init;
-	if (mdwc->hsphy_init_seq)
+	}
+	if (mdwc->hsphy_init_seq) {
+		printk(KERN_WARNING "dwc3_msm_qscratch_reg_init: sending hsphy_init_seq = 0x%08X to offset 0x%08X\n",
+		       mdwc->hsphy_init_seq, (unsigned int)PARAMETER_OVERRIDE_X_REG);
 		dwc3_msm_write_readback(mdwc->base,
 					PARAMETER_OVERRIDE_X_REG, 0x03FFFFFF,
 					mdwc->hsphy_init_seq & 0x03FFFFFF);
+	}
 
 	/*
 	 * Enable master clock for RAMs to allow BAM to access RAMs when
@@ -1545,22 +1560,22 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event)
 		queue_work(system_nrt_wq, &mdwc->usb_block_reset_work);
 		break;
 	case DWC3_CONTROLLER_RESET_EVENT:
-		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_RESET_EVENT received\n");
+		dev_info(mdwc->dev, "DWC3_CONTROLLER_RESET_EVENT received\n");
 		dwc3_msm_qscratch_reg_init(mdwc, DWC3_CONTROLLER_RESET_EVENT);
 		break;
 	case DWC3_CONTROLLER_POST_RESET_EVENT:
-		dev_dbg(mdwc->dev,
-				"DWC3_CONTROLLER_POST_RESET_EVENT received\n");
+		dev_info(mdwc->dev, "DWC3_CONTROLLER_POST_RESET_EVENT received\n");
 		dwc3_msm_qscratch_reg_init(mdwc,
 					DWC3_CONTROLLER_POST_RESET_EVENT);
 		dwc->tx_fifo_size = mdwc->tx_fifo_size;
 		break;
 	case DWC3_CONTROLLER_POST_INITIALIZATION_EVENT:
+		dev_info(mdwc->dev, "DWC3_CONTROLLER_POST_INITIALIZATION_EVENT received\n");
 		/* clear LANE0_PWR_PRESENT bit after initialization is done */
 		dwc3_msm_write_readback(mdwc->base, SS_PHY_CTRL_REG, (1 << 24),
 									0x0);
 	default:
-		dev_dbg(mdwc->dev, "unknown dwc3 event\n");
+		dev_info(mdwc->dev, "unknown dwc3 event\n");
 		break;
 	}
 }
@@ -2873,6 +2888,8 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	int len = 0;
 	u32 tmp[3];
 
+	printk(KERN_INFO "dwc3_msm_probe: start\n");
+
 	mdwc = devm_kzalloc(&pdev->dev, sizeof(*mdwc), GFP_KERNEL);
 	if (!mdwc) {
 		dev_err(&pdev->dev, "not enough memory\n");
@@ -2989,11 +3006,13 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	sec_qcom_usb_rdrv = of_get_named_gpio(node,	"qcom,gpio_usb_rdrv_en", 0);
 	if (sec_qcom_usb_rdrv < 0) {
 #if defined(CONFIG_SEC_K_PROJECT)
+		pr_info("CONFIG_SEC_K_PROJECT: Get USB 3.0 redriver GPIO address from qcom,gpio_usb_rdrv_en\n");
 		of_property_read_u32(node,	"qcom,gpio_usb_rdrv_en", &sec_qcom_usb_rdrv);
 		if (sec_qcom_usb_rdrv < 0)
 #endif
 			dev_err(&pdev->dev, "unable to get qcom,gpio_usb_rdrv_en\n");
 	}
+	pr_info("Got sec_qcom_usb_rdrv = %d\n", sec_qcom_usb_rdrv);
 #endif
 
 #if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
@@ -3094,6 +3113,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		}
 	}
 
+	pr_info("dwc3_msm_probe: otg_capability = %d\n", mdwc->ext_xceiv.otg_capability);
 	if (mdwc->ext_xceiv.otg_capability) {
 		mdwc->pmic_id_irq =
 			platform_get_irq_byname(pdev, "pmic_id_irq");
@@ -3119,6 +3139,8 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 					goto disable_hs_ldo;
 				}
 
+				pr_info("dwc3_msm_probe: get dwc3_msm_pmic_id success\n");
+
 				local_irq_save(flags);
 				/* Update initial ID state */
 				mdwc->id_state =
@@ -3133,6 +3155,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 
 		if (mdwc->pmic_id_irq <= 0) {
 			/* If no PMIC ID IRQ, use ADC for ID pin detection */
+			pr_info("dwc3_msm_probe: no PMIC ID IRQ, use ADC for ID pin detection\n");
 			queue_work(system_nrt_wq, &mdwc->init_adc_work.work);
 			device_create_file(&pdev->dev, &dev_attr_adc_enable);
 			mdwc->pmic_id_irq = 0;
@@ -3148,6 +3171,10 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		if (!tcsr) {
 			dev_dbg(&pdev->dev, "tcsr ioremap failed\n");
 		} else {
+			dev_info(&pdev->dev, "dwc3_msm_probe: Enable USB3 on the primary USB port. "
+				" Writing 1 to 0x%08X (res->start is 0x%08X)\n",
+				(unsigned int)tcsr, (unsigned int)res->start);
+
 			/* Enable USB3 on the primary USB port. */
 			writel_relaxed(0x1, tcsr);
 			/*
@@ -3195,6 +3222,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->dbm_num_eps = DBM_MAX_EPS;
 	}
 
+	dev_info(&pdev->dev, "dwc3_msm_probe: mdwc->dbm_num_eps = %d\n", mdwc->dbm_num_eps);
 	if (mdwc->dbm_num_eps > DBM_MAX_EPS) {
 		dev_err(&pdev->dev,
 			"Driver doesn't support number of DBM EPs. "
@@ -3216,8 +3244,9 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 
 	dwc3_set_notifier(&dwc3_msm_notify_event);
 	/* usb_psy required only for vbus_notifications or charging support */
-	if (mdwc->ext_xceiv.otg_capability ||
-			!mdwc->charger.charging_disabled) {
+	if (mdwc->ext_xceiv.otg_capability || !mdwc->charger.charging_disabled) {
+		dev_info(&pdev->dev, "dwc3_msm_probe: creating power supply device\n");
+
 		mdwc->usb_psy.name = "dwc-usb";
 		mdwc->usb_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
 		mdwc->usb_psy.supplied_to = dwc3_msm_pm_power_supplied_to;
@@ -3240,6 +3269,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 						__func__);
 			goto disable_hs_ldo;
 		}
+		dev_info(&pdev->dev, "dwc3_msm_probe: power supply dwc3-usb dev registered!\n");
 	}
 
 	if (node) {
@@ -3274,9 +3304,15 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 #endif
 
 #if defined(CONFIG_SEC_K_PROJECT)
+	dev_info(&pdev->dev, "dwc3_msm_probe: configuring redriver GPIO %d (set value 0)\n", sec_qcom_usb_rdrv);
 	/* set gpio to enable redriver for USB3.0 */
-	gpio_tlmm_config(GPIO_CFG(sec_qcom_usb_rdrv, 0, GPIO_CFG_OUTPUT,
+	ret = gpio_tlmm_config(GPIO_CFG(sec_qcom_usb_rdrv, 0, GPIO_CFG_OUTPUT,
 					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+	dev_info(&pdev->dev, "  gpio_tlmm_config for sec_qcom_usb_rdrv(%d) returned: %d!\n",
+		sec_qcom_usb_rdrv, ret);
+	if (ret == -EINVAL) {
+		dev_err(&pdev->dev, "  gpio_tlmm_config: EINVAL (invalid gpio: not in range)\n");
+	}
 	gpio_set_value(sec_qcom_usb_rdrv,0);
 #endif
 
@@ -3327,6 +3363,8 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
 	dwc3_msm_debugfs_init(mdwc);
+
+	dev_info(&pdev->dev, "dwc3_msm_probe: probed successfully\n");
 
 	return 0;
 
